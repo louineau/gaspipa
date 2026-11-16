@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Ne jamais transmettre l'adresse (qui peut contenir un jeton) à un autre site -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>Gaspipa – Confirmation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥕</text></svg>">
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #FAF9F7;
+      --border: #ECE9E3;
+      --text: #1A1915;
+      --muted: #6E6A63;
+      --subtle: #9C978F;
+      --accent: #D97757;
+      --accent-soft: #FBEEE8;
+      --ok: #2E8457;
+      --ok-soft: #E7F4EC;
+      --warn: #B86E00;
+      --warn-soft: #FDF3E1;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    main { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 24px; }
+    .logo {
+      width: 72px; height: 72px; border-radius: 28px;
+      background: var(--accent-soft);
+      display: grid; place-items: center;
+      font-size: 36px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      align-self: flex-start;
+      padding: 5px 12px; border-radius: 999px;
+      font-size: 13px; font-weight: 700;
+    }
+    .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .badge.ok { color: var(--ok); background: var(--ok-soft); }
+    .badge.warn { color: var(--warn); background: var(--warn-soft); }
+    h1 { font-size: 32px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+    .lead { font-size: 17px; line-height: 1.5; color: var(--muted); }
+    ol { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    li {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px; border-radius: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 16px; line-height: 1.4;
+    }
+    li .n { color: var(--accent); font-weight: 700; min-width: 18px; }
+    .note { font-size: 13px; line-height: 1.5; color: var(--subtle); }
+    footer { font-size: 13px; color: var(--subtle); padding-top: 8px; border-top: 1px solid var(--border); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">🥕</div>
+
+    <!-- Email confirmé -->
+    <section id="success" hidden>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <span class="badge ok"><span class="dot"></span>Adresse confirmée</span>
+        <h1>C’est tout bon !</h1>
+        <p class="lead">Ton adresse email est confirmée. Ton compte Gaspipa est prêt.</p>
+      </div>
+    </section>
+
+    <!-- Lien expiré ou déjà utilisé -->
+    <section id="error" hidden>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <span class="badge warn"><span class="dot"></span>Lien plus valable</span>
+        <h1>Ce lien a expiré</h1>
+        <p class="lead" id="error-text">Ce lien de confirmation a expiré ou a déjà été utilisé.</p>
+      </div>
+    </section>
+
+    <!-- Visite directe, sans lien -->
+    <section id="neutral" hidden>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <h1>Gaspipa</h1>
+        <p class="lead">Cette page confirme les adresses email des comptes Gaspipa. Ouvre le lien reçu par email pour confirmer la tienne.</p>
+      </div>
+    </section>
+
+    <ol id="steps" hidden>
+      <li><span class="n">1</span><span>Retourne dans l’app <strong>Gaspipa</strong> sur ton téléphone.</span></li>
+      <li><span class="n">2</span><span>Connecte-toi avec ton email et ton mot de passe.</span></li>
+    </ol>
+
+    <p class="note" id="error-help" hidden>
+      Si tu arrives à te connecter dans l’app, ton compte est déjà confirmé : il n’y a rien d’autre à faire.
+      Sinon, inscris-toi à nouveau dans l’app pour recevoir un nouveau lien.
+    </p>
+
+    <p class="note" id="close-hint" hidden>Tu peux fermer cette page.</p>
+
+    <footer>Gaspipa · Frigo, congélateur, placards. Rien ne se perd.</footer>
+  </main>
+
+  <script>
+    (function () {
+      // Supabase renvoie ici après le clic sur le lien de confirmation, avec soit
+      // une session (#access_token=…), soit une erreur (#error=…&error_code=otp_expired).
+      var hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      var query = new URLSearchParams(window.location.search);
+      var get = function (k) { return hash.get(k) || query.get(k); };
+
+      var errorCode = get('error_code') || get('error');
+      var success = !errorCode && (get('access_token') || get('code') || get('type') === 'signup');
+
+      // On efface tout de suite le jeton de l'adresse : il ne sert pas ici
+      // et ne doit pas rester visible, ni dans l'historique, ni dans une capture d'écran.
+      if (window.location.hash || window.location.search) {
+        history.replaceState(null, '', window.location.pathname);
+      }
+
+      var show = function (id) { document.getElementById(id).hidden = false; };
+
+      if (success) {
+        show('success'); show('steps'); show('close-hint');
+        document.title = 'Gaspipa – Adresse confirmée';
+      } else if (errorCode) {
+        show('error'); show('error-help');
+        document.title = 'Gaspipa – Lien expiré';
+        if (errorCode !== 'otp_expired' && errorCode !== 'access_denied') {
+          document.getElementById('error-text').textContent =
+            'La confirmation n’a pas pu aboutir. Le lien est peut-être incomplet ou trop ancien.';
+        }
+      } else {
+        show('neutral');
+      }
+    })();
+  </script>
+</body>
+</html>
